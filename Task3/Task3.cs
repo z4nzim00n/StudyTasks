@@ -1,83 +1,50 @@
 ﻿using Newtonsoft.Json;
 
-namespace Task3
+public class Program
 {
-    public class Program
+    public static void Main(string[] args)
     {
-        public static void Main(string[] args)
-        {
-            ReportCreator task3 = new ReportCreator(args[0], args[1])
-            .CreateFile("report.json");
-        }
+        var values = JsonConvert.DeserializeObject<ValuesData>(File.ReadAllText(args[0]));
+        var tests = JsonConvert.DeserializeObject<TestsData>(File.ReadAllText(args[1]));
+
+        var idToValueMap = values.Values.ToDictionary(item => item.Id, item => item.Value);
+
+        UpdateValues(tests.Tests, idToValueMap);
+
+        File.WriteAllText(args[2], JsonConvert.SerializeObject(tests, Formatting.Indented));
     }
 
-    public class TestsContainer
+    private static void UpdateValues(List<Item> items, Dictionary<int, string> idToValueMap)
     {
-        public List<TestItem> Tests { get; set; }
-    }
-    public class TestItem
-    {
-        public int Id { get; set; }
-        public string title { get; set; }
-        public string value { get; set; }
-        public List<TestItem> values { get; set; }
-    }
-
-    public class ValuesContainer
-    {
-        public List<ValueItem> Values { get; set; }
-    }
-    public class ValueItem
-    {
-        public int Id { get; set; }
-        public string Value { get; set; }
-    }
-
-
-
-
-    public class ReportCreator
-    {
-        private TestsContainer testsData = new TestsContainer();
-        private ValuesContainer valueData = new ValuesContainer();
-
-
-        public ReportCreator(string tests, string values)
+        foreach (var item in items)
         {
-            testsData = LoadData<TestsContainer>(tests);
-            valueData = LoadData<ValuesContainer>(values);
-        }
-
-        private T LoadData<T>(string filePath)
-        {
-            var jsonStringFromFile = File.ReadAllText(filePath);
-            return JsonConvert.DeserializeObject<T>(jsonStringFromFile);
-        }
-
-        public ReportCreator CreateFile(string reportFileName)
-        {
-            FillValuesRecursive(testsData.Tests);
-            var reportJson = JsonConvert.SerializeObject(testsData, Formatting.Indented);
-            File.WriteAllText(reportFileName, reportJson);
-            return this;
-        }
-
-        private void FillValuesRecursive(List<TestItem> items)
-        {
-            foreach (var item in items)
+            if (idToValueMap.TryGetValue(item.Id, out var value))
             {
-                var value = valueData.Values.FirstOrDefault(v => v.Id == item.Id);
-                if (value != null)
-                {
-                    item.value = value.Value;
-                }
+                item.Value = value;
+            }
 
-                if (item.values != null && item.values.Any())
-                {
-                    FillValuesRecursive(item.values);
-                }
+            if (item.Values != null)
+            {
+                UpdateValues(item.Values, idToValueMap);
             }
         }
-
     }
+}
+
+public class ValuesData
+{
+    public List<Item> Values { get; set; }
+}
+
+public class TestsData
+{
+    public List<Item> Tests { get; set; }
+}
+
+public class Item
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public string Value { get; set; }
+    public List<Item> Values { get; set; }
 }
